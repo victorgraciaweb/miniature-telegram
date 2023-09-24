@@ -4,4 +4,4 @@ Smart Contract with Solidity Token ERC721
 How to run?
 --
 
-1. You can compile and deployn Remix 
+1. You can compile and deploy in Remix 
