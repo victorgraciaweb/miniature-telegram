@@ -15,7 +15,10 @@ contract ArtToken is ERC721, Ownable {
     uint256 counter;
 
     // Pricing of NFT Tokens (price of the artwork)
-    uint256 public fee = 5 ether;
+    uint256 public feeToken = 5 ether;
+
+    // Pricing of Update NFT Tokens
+    uint256 public feeUpdate = 1 ether;
 
     // Data structure with the properties of the artwork
     struct Art {
@@ -24,6 +27,8 @@ contract ArtToken is ERC721, Ownable {
         uint256 dna;
         uint8 level;
         uint8 rarity;
+        uint8 price;
+        uint8 availableForBuy;
     }
 
     // Storage structure for keeping artworks
@@ -45,9 +50,9 @@ contract ArtToken is ERC721, Ownable {
 
     // NFT Token Creation (Artwork)
     function _createArtWork(string memory _name) internal {
-        uint8 randRarity = uint8(_createRandomNum(1000));
+        uint8 randRarity = uint8(_createRandomNum(100));
         uint256 randDna = _createRandomNum(10**16);
-        Art memory newArtWork = Art(_name, counter, randDna, 1, randRarity);
+        Art memory newArtWork = Art(_name, counter, randDna, 1, randRarity, 0, 0);
         art_works.push(newArtWork);
         _safeMint(msg.sender, counter);
         emit NewArtWork(msg.sender, counter, randDna);
@@ -55,8 +60,8 @@ contract ArtToken is ERC721, Ownable {
     }
 
     // NFT Token Price Update
-    function updateFee(uint256 _fee) external onlyOwner {
-        fee = _fee;
+    function updateFeeToken(uint256 _feeToken) external onlyOwner {
+        feeToken = _feeToken;
     }
 
     // Visualize the balance of the Smart Contract (ethers)
@@ -82,5 +87,64 @@ contract ArtToken is ERC721, Ownable {
             }
         }
         return result;
+    }
+
+    // ============================================
+    // NFT Token Development
+    // ============================================
+
+    // NFT Token Payment
+    function createRandomArtWork(string memory _name) public payable {
+        require(msg.value >= feeToken);
+        _createArtWork(_name);
+    }
+
+    // Extraction of ethers from the Smart Contract to the Owner
+    function withdraw() external payable onlyOwner {
+        address payable _owner = payable(owner());
+        _owner.transfer(address(this).balance);
+    }
+
+    // Level up NFT Tokens
+    function levelUp(uint256 _artId) public payable {
+        require(ownerOf(_artId) == msg.sender, "Error: Only Token Owner can up level");
+        require(msg.value >= feeUpdate, "Error: Is necessary send fee for up level");
+        Art storage art = art_works[_artId];
+        art.level++;
+    }
+
+    // ============================================
+    // NFT Business logic
+    // ============================================
+
+    // Change Status Available (Active)
+    function changeAvailableActive(uint256 _artId, uint8 _priceToken) external returns (Art memory) {
+        require(ownerOf(_artId) == msg.sender, "Error: Only Token Owner can change available status");
+        require(_priceToken > 0, "Error: Price token can't 0");
+        Art storage token = art_works[_artId];
+        token.availableForBuy = 1;
+        token.price = _priceToken;
+        return token;
+    }
+
+    // Change Status Available (Inactive)
+    function changeAvailableInactive(uint256 _artId) external returns (Art memory) {
+        require(ownerOf(_artId) == msg.sender, "Error: Only Token Owner can change available status");
+        Art storage token = art_works[_artId];
+        token.availableForBuy = 0;
+        token.price = 0;
+        return token;
+    }
+
+    // Buy tokens beetwen owners
+    function buyToken(uint256 _artId) public payable {
+        Art storage token = art_works[_artId];
+        require(ownerOf(_artId) != msg.sender, "Error: Token is just your");
+        require(token.availableForBuy == 1, "Error: Token is not Available for buy");
+        require(msg.value >= token.price, "Error: Is necessary send Token price for to buy it");
+        payable(ownerOf(_artId)).transfer(msg.value);
+        _transfer(ownerOf(_artId), msg.sender, _artId);
+        token.availableForBuy = 0;
+        token.price = 0;
     }
 }
