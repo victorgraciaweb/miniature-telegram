@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 // Importacion de Smart Contracts de OpenZeppelin
 import "@openzeppelin/contracts@4.4.2/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts@4.4.2/access/Ownable.sol";
+import "@openzeppelin/contracts@4.4.2/utils/Counters.sol";
 
 contract ArtToken is ERC721, Ownable {
 
@@ -11,8 +12,9 @@ contract ArtToken is ERC721, Ownable {
     constructor (string memory _name, string memory _symbol)
     ERC721(_name, _symbol){}
 
-    // NFT token counter
-    uint256 counter;
+    // Contadores para los IDs de los NFTs
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokensIds;
 
     // Pricing of NFT Tokens (price of the artwork)
     uint256 public feeToken = 5 ether;
@@ -52,11 +54,16 @@ contract ArtToken is ERC721, Ownable {
     function _createArtWork(string memory _name) internal {
         uint8 randRarity = uint8(_createRandomNum(100));
         uint256 randDna = _createRandomNum(10**16);
-        Art memory newArtWork = Art(_name, counter, randDna, 1, randRarity, 0, 0);
+        uint256 newItemId = _tokensIds.current();
+        Art memory newArtWork = Art(_name, newItemId, randDna, 1, randRarity, 0, 0);
         art_works.push(newArtWork);
-        _safeMint(msg.sender, counter);
-        emit NewArtWork(msg.sender, counter, randDna);
-        counter++;
+        _safeMint(msg.sender, newItemId);
+        emit NewArtWork(msg.sender, newItemId, randDna);
+        _tokensIds.increment();
+    }
+
+    function totalSupply() public view returns (uint) {
+        return art_works.length;
     }
 
     // NFT Token Price Update
